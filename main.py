@@ -2,17 +2,32 @@ from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import (ApplicationBuilder, CommandHandler, ContextTypes, 
                           ConversationHandler, MessageHandler, filters, Updater)
 from token_bot import EXACT_TOKEN_TYPES
+from memory_datasourse import MemoryDataSourse
 
 ENTER_MESSAGE, ENTER_TIME = 'range(2)', 'ee'
+dataSource = MemoryDataSourse()
 
 
 def add_reminder_handler(update: Update, context: CallbackContext):
     update.message.reply_text('Please enter a message of the reminder:')
     return ENTER_MESSAGE
 
-conv_handler = ConversationHandler(
 
-    entry_points=[MessageHandler(filters.regex(ADD_REMINDER_TEXT), add_reminder_handler)],
+def enter_message_handler(update: Update, context: CallbackContext):
+    update.message.reply_text('Please enter a time when bot should remind:')
+    context.user_data['message.text'] = update.message.text
+    return ENTER_TIME
+
+
+def enter_time_handler(update: Update, context: CallbackContext):
+    message_text = context.user_data["message_text"]
+    time = update.message.text
+    message_data = dataSource.add_reminder(update.message.chat_id, message_text, time)
+    update.message.reply_text("your reminder: " + message_data.__repr__())
+    return ConversationHandler.END
+
+conv_handler = ConversationHandler( 
+    entry_points=[MessageHandler(filters.regex(ADD_REMINDER_TEXT), add_reminder_handler)]
     states = {
         ENTER_MESSAGE = [(MessageHandler(filters.all, enter_message_handler))],
         ENTER_TIME = [MessageHandler(filters.all, enter_time_handler)]
