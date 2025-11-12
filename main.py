@@ -1,6 +1,7 @@
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import (ApplicationBuilder, CommandHandler, ContextTypes, 
-                          ConversationHandler, MessageHandler, filters, Updater)
+                          ConversationHandler, MessageHandler, filters, Updater,
+                          CallbackContext)
 from token_bot import EXACT_TOKEN_TYPES
 from memory_datasourse import MemoryDataSourse
 
@@ -30,7 +31,8 @@ conv_handler = ConversationHandler(
     entry_points=[MessageHandler(filters.regex(ADD_REMINDER_TEXT), add_reminder_handler)]
     states = {
         ENTER_MESSAGE = [(MessageHandler(filters.all, enter_message_handler))],
-        ENTER_TIME = [MessageHandler(filters.all, enter_time_handler)]
+        ENTER_TIME = [MessageHandler(filters.all, enter_time_handler)],
+        fallbacks= []
     },
     fallbacks = []
 )
@@ -48,6 +50,7 @@ def add_reminder_button():
 
 updater = Updater(EXACT_TOKEN_TYPES, use_context= True)
 updater.dispatcher.add_handler(CommandHandler('start', start_handler))
+updater.dispatcher.add_handler(conv_handler)
  
 app = ApplicationBuilder().token(EXACT_TOKEN_TYPES).build()
 
