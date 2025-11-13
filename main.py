@@ -4,6 +4,10 @@ from telegram.ext import (ApplicationBuilder, CommandHandler, ContextTypes,
                           CallbackContext)
 from token_bot import EXACT_TOKEN_TYPES
 from memory_datasourse import MemoryDataSourse
+import threading
+import time
+
+INTERVAL = 30
 
 ENTER_MESSAGE, ENTER_TIME = 'range(2)', 'ee'
 dataSource = MemoryDataSourse()
@@ -27,12 +31,28 @@ def enter_time_handler(update: Update, context: CallbackContext):
     update.message.reply_text("your reminder: " + message_data.__repr__())
     return ConversationHandler.END
 
+def start_check_reminders_task():
+    thread = threading.Thread(target=check_reminders, args=())
+    thread.daemon = True
+    thread.start()
+
+def check_reminders():
+    while True:
+        for chat_id in dataSource.reminders:
+            reminder_data = dataSource.reminders[chat_id]
+            if reminder_data.should_be_fired():
+                reminder_data.fire()
+                updater.bot.send_message(chat_id, reminder_data.message)
+        time.sleep(INTERVAL)
+
+
 conv_handler = ConversationHandler( 
-    entry_points=[MessageHandler(filters.regex(ADD_REMINDER_TEXT), add_reminder_handler)]
+    entry_points=[MessageHandler(filters.Regex(
+        'Add a reminder '), add_reminder_handler)],
     states = {
-        ENTER_MESSAGE = [(MessageHandler(filters.all, enter_message_handler))],
-        ENTER_TIME = [MessageHandler(filters.all, enter_time_handler)],
-        fallbacks= []
+        ENTER_MESSAGE: [(MessageHandler(filters.ALL, enter_message_handler))],
+        ENTER_TIME: [MessageHandler(filters.ALL, enter_time_handler)],
+        # fallbacks= []
     },
     fallbacks = []
 )
@@ -45,10 +65,13 @@ async def hello(update, context: ContextTypes.DEFAULT_TYPE) -> None:
     #     'hello, creator!', reply_markup=add_reminder_button())
 
 def add_reminder_button():
-    keyboard = [[KeyboardButton(ADD_REMINDER_TEXT)]]
+    keyboard = [[KeyboardButton('Add a reminder ')]]
     return ReplyKeyboardMarkup(keyboard)
 
-updater = Updater(EXACT_TOKEN_TYPES, use_context= True)
+def start_handler(update, context):
+    update.message.reply_text('Hello, creator!', reply_markup=add_reminder_button())
+
+updater = Updater(EXACT_TOKEN_TYPES, update_queue=True)
 updater.dispatcher.add_handler(CommandHandler('start', start_handler))
 updater.dispatcher.add_handler(conv_handler)
  
@@ -57,3 +80,4 @@ app = ApplicationBuilder().token(EXACT_TOKEN_TYPES).build()
 app.add_handler(CommandHandler("hello", hello))
 
 app.run_polling()
+start_check_reminders_task()
