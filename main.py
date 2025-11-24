@@ -2,15 +2,16 @@ from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import (ApplicationBuilder, CommandHandler, ContextTypes, 
                           ConversationHandler, MessageHandler, filters, Updater,
                           CallbackContext)
-from token_bot import EXACT_TOKEN_TYPES
-from memory_datasourse import MemoryDataSourse
+from token_bot import EXACT_TOKEN_TYPES, DATABASE_URL
+# from memory_datasourse import MemoryDataSourse
 import threading
 import time
+import datetime
 
 INTERVAL = 30
 
 ENTER_MESSAGE, ENTER_TIME = 'range(2)', 'ee'
-dataSource = MemoryDataSourse()
+dataSource = DATABASE_URL
 
 
 def add_reminder_handler(update: Update, context: CallbackContext):
@@ -26,8 +27,8 @@ def enter_message_handler(update: Update, context: CallbackContext):
 
 def enter_time_handler(update: Update, context: CallbackContext):
     message_text = context.user_data["message_text"]
-    time = update.message.text
-    message_data = dataSource.add_reminder(update.message.chat_id, message_text, time)
+    time = datetime.datetime.strptime(update.message.text, "%d/%m/%y %H: %M")
+    message_data = dataSource.create_reminder(update.message.chat_id, message_text, time)
     update.message.reply_text("your reminder: " + message_data.__repr__())
     return ConversationHandler.END
 
@@ -38,11 +39,12 @@ def start_check_reminders_task():
 
 def check_reminders():
     while True:
-        for chat_id in dataSource.reminders:
-            reminder_data = dataSource.reminders[chat_id]
+        for reminder_data in dataSource.get_all_reminders():
+            # reminder_data = dataSource.reminders[chat_id]
             if reminder_data.should_be_fired():
-                reminder_data.fire()
-                updater.bot.send_message(chat_id, reminder_data.message)
+                # reminder_data.fire()
+                dataSource.fire_reminder(reminder_data.reminder_id)
+                updater.bot.send_message(reminder_data.chat_id, reminder_data.message)
         time.sleep(INTERVAL)
 
 
@@ -78,6 +80,6 @@ updater.dispatcher.add_handler(conv_handler)
 app = ApplicationBuilder().token(EXACT_TOKEN_TYPES).build()
 
 app.add_handler(CommandHandler("hello", hello))
-
+dataSource.create_tables()
 app.run_polling()
 start_check_reminders_task()
