@@ -1,16 +1,19 @@
-from telegram import Update, KeyboardButton, ReplyKeyboardMarkup 
+import asyncio
 from telegram.ext import (ApplicationBuilder, CommandHandler, ContextTypes, 
-                          ConversationHandler, MessageHandler, filters, Updater,
-                          CallbackContext)
+                          ConversationHandler, MessageHandler, filters)
+from telegram import Update, KeyboardButton, ReplyKeyboardMarkup 
 from token_bot import EXACT_TOKEN_TYPES, DATABASE_URL
-# from memory_datasourse import MemoryDataSourse
+import os
 import threading
 import time
 import datetime
+import logging
+import sys
 
+ADD_REMINDER_TEXT = 'add a reminder ⏰'
 INTERVAL = 30
 
-ENTER_MESSAGE, ENTER_TIME = 'range(2)', 'ee'
+ENTER_MESSAGE, ENTER_TIME = range(2)
 dataSource = DATABASE_URL
 
 
@@ -74,8 +77,8 @@ def start_handler(update, context):
     update.message.reply_text('Hello, creator!', reply_markup=add_reminder_button())
 
 updater = Updater(EXACT_TOKEN_TYPES, update_queue=True)
-updater.dispatcher.add_handler(CommandHandler('start', start_handler))
-updater.dispatcher.add_handler(conv_handler)
+updater.application.add_handler(CommandHandler('start', start_handler))
+updater.application.add_handler(conv_handler)
  
 app = ApplicationBuilder().token(EXACT_TOKEN_TYPES).build()
 
